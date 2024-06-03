@@ -41,6 +41,6 @@ testem.log
 .DS_Store
 Thumbs.db
 
-# ./src/constants/constants.ts
-# /src/constants/constants.ts
-# src/constants/constants.ts
+./src/constants/constants.ts
+/src/constants/constants.ts
+src/constants/constants.ts
