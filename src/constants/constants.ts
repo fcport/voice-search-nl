@@ -1,1 +1,1 @@
-export const HF_TOKEN = '';
+export const HF_TOKEN = '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';
