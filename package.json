@@ -20,6 +20,7 @@
     "@angular/router": "^18.0.0",
     "@huggingface/inference": "^2.7.0",
     "@types/recordrtc": "^5.6.14",
+    "langchain": "^0.2.4",
     "primeflex": "^3.3.1",
     "primeicons": "^7.0.0",
     "primeng": "^17.18.0",
