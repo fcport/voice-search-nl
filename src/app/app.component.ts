@@ -1,10 +1,17 @@
-import { Component, Signal, WritableSignal, signal } from '@angular/core';
+import { Component, WritableSignal, signal } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { HfInference } from '@huggingface/inference';
 import { ButtonModule } from 'primeng/button';
 import * as RecordRTC from 'recordrtc';
-import { DomSanitizer } from '@angular/platform-browser';
-import { HF_TOKEN } from '../constants/constants';
-import { HfInference } from '@huggingface/inference';
+import { HF_TOKEN, OPEN_AI_KEY } from '../constants/constants';
+import {
+  StringOutputParser,
+  CommaSeparatedListOutputParser,
+  StructuredOutputParser,
+} from '@langchain/core/output_parsers';
+import { ChatOpenAI } from '@langchain/openai';
+import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { z } from 'zod';
 
 @Component({
   selector: 'app-root',
@@ -51,10 +58,6 @@ export class AppComponent {
     const resultFromHf = await this.inference.automaticSpeechRecognition({
       data: blob,
       model: 'openai/whisper-large-v3',
-      //@ts-ignore
-      parameters: {
-        language: 'en',
-      },
     });
 
     console.log(resultFromHf);
@@ -77,5 +80,55 @@ export class AppComponent {
       (translation as unknown as { translation_text: string }).translation_text
     );
     console.log(this.translation());
+
+    this.parseData(this.transcription());
+  }
+
+  async parseData(phrase: string) {
+    const model = new ChatOpenAI({
+      modelName: 'gpt-3.5-turbo',
+      temperature: 0,
+      maxTokens: 700,
+      verbose: false,
+      openAIApiKey: OPEN_AI_KEY,
+    });
+    // const parser = StructuredOutputParser.fromNamesAndDescriptions({
+    //   city: 'the name of the City to serach hotel into',
+    //   arrival: 'the date from which the reservation will start',
+    //   departure: 'the date from which the reservation will end',
+    // });
+    const parser = StructuredOutputParser.fromZodSchema(
+      z.object({
+        city: z.string().describe('athe name of the City to serach hotel into'),
+        arrival: z
+          .string()
+          .describe(
+            'the date from which the reservation will start, if not expressed differently the date is within the current year, the date must be parsed to dd/MM/yyyy'
+          ),
+        departure: z
+          .string()
+          .describe(
+            'the date from which the reservation will end, if not expressed differently the date is within the current year dd/MM/yyyy'
+          ),
+        // sources: z
+        //   .array(z.string())
+        //   .describe('sources used to answer the question, should be websites.'),
+      })
+    );
+
+    const templatePrompt = ChatPromptTemplate.fromTemplate(
+      `Extract informations from the following phrase, consider that it's about a reservation in a specific City.
+      Formatting instructions : {formattingInstruction}. 
+      Phrase: {phrase}`
+    );
+
+    const chain = templatePrompt.pipe(model).pipe(parser);
+
+    const res = await chain.invoke({
+      phrase: phrase,
+      formattingInstruction: parser.getFormatInstructions(),
+    });
+
+    console.log(res);
   }
 }
